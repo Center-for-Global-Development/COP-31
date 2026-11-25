@@ -33,8 +33,10 @@ extracted text:
   2024 LDC and SIDS values also match appendix table 2.C.5.
 * f2: figures 2.7 and 2.8. Gaps are computed in the figure (needs minus flows) and
   reproduce the report's printed gaps: 335 / 300 / 231 and 36 / 27 / 12.
-* f4: flows as f1; 2035 goal from figure 2.7 / table 2.3 (US$120bn), section 2.4.1 (LDCs US$39bn, SIDS US$5.1bn) and
-  figure 2.8 (combined US$44bn); needs from figures 2.7 and 2.8; 2024 instrument split in the tooltip from figure 2.5.
+* f4: flows as f1; needs in 2024 prices from section 2.4.1 (US$305bn; LDCs and SIDS US$38–51bn);
+  2035 goal from figure 2.7 / table 2.3 (US$120bn), section 2.4.1 (LDCs US$39bn, SIDS US$5.1bn) and figure 2.8
+  (combined US$44bn), all in 2035 prices, deflated in the figure by 1.03^11 to 2024 prices
+  (US$86.7bn, 28.2bn, 3.7bn, 31.8bn).
 * f3: figure 2.5. Income-group totals match appendix table 2.C.4 (5.6, 12.5, 5.3, 0.1).
 
 Hand-checked benchmarks: 2024 flows US$31.4bn (28.2 public + 3.2 private); tripling the
@@ -54,12 +56,11 @@ doubling meets 120/420 = 29% of 2035 needs; low-income grant share 4.1/5.6 = 73%
 * **LDCs and SIDS are combined in f2** because the report gives needs only for the
   combined group.
 
-* **f4 mixes price bases on one axis.** Flows to 2024 are constant 2024 US$; the 2035 goal
-  and needs are 2035 prices, as the report compares them (figure 2.7). Stated in the notes.
-  Showing 2024-price equivalents (goal US$88.5bn in 2025 prices, needs US$305bn) was the
-  alternative; the request was for the US$120bn goal as stated.
-* **No instrument control in f4.** The report gives the grants/loans split for 2024 only,
-  so an instrument time series cannot be drawn. The 2024 split is in the 2024 tooltip.
+* **f4 is in constant 2024 US$ throughout.** The report states the 2035 goal only in 2035
+  prices, so the figure converts it with the report's own 3% a year inflation assumption over
+  2024–2035. (The report's table 2.3 gives US$88.5bn for the goal in 2025 prices; that is a
+  different base year, not used here.)
+* **No instrument breakdown in f4.** Dropped at review as unnecessary; f3 covers it.
 * **f4 needs column** appears only where UNEP estimates needs (all developing countries;
   LDCs and SIDS combined). LDC and SIDS flows are summed for the combined view, double-
   counting the few countries in both, as the report does for 2035.

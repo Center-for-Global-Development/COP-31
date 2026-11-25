@@ -64,30 +64,33 @@
   const { observeInlineSize, createSvg, getLayout } = window.CGDCore;
   const { usd, pct, renderNotes, legend, attachTip, hideTip, wireFullscreen, niceTicks } = window.AGR;
 
-  /* UNEP AGR 2026.
-     Flows 2019-2024, constant 2024 US$: fig 2.3a (all developing countries,
-     public + mobilised private) and fig 2.4 (LDCs, SIDS, public only).
-     2024 instrument split: fig 2.5.
-     2035 goal = tripling of the 2025 doubling, 2035 prices: US$120bn (fig 2.7,
-     table 2.3); LDCs US$39bn and SIDS US$5.1bn (section 2.4.1); combined US$44bn
-     (fig 2.8). Needs in 2035, 2035 prices: US$420bn (fig 2.7); LDCs and SIDS
-     US$53-71bn (fig 2.8). UNEP gives no separate needs for LDCs or SIDS. */
+  /* UNEP AGR 2026. Everything in constant 2024 US$.
+     Flows 2019-2024: fig 2.3a (all developing countries, public + mobilised
+     private) and fig 2.4 (LDCs, SIDS, public only).
+     Needs in 2035, 2024 prices: US$305bn (section 2.4.1); LDCs and SIDS
+     US$38-51bn (section 2.4.1). UNEP gives no separate needs for LDCs or SIDS.
+     2035 goal = tripling of the 2025 doubling. The report states it only in
+     2035 prices: US$120bn (fig 2.7, table 2.3); LDCs US$39bn, SIDS US$5.1bn
+     (section 2.4.1); combined US$44bn (fig 2.8). We convert to 2024 prices
+     with the report's own assumption of 3% a year over 2024-2035. */
+  const DEFLATOR_2035_TO_2024 = 1.03 ** 11;
+  const to2024 = v => +(v / DEFLATOR_2035_TO_2024).toFixed(1);
   const YEARS = [2019, 2020, 2021, 2022, 2023, 2024];
   const LDC = [7.5, 9.5, 8.5, 12.1, 10.5, 10.2], SIDS = [1.0, 1.2, 1.3, 1.7, 1.2, 1.4];
   const GROUPS = {
     all: { name: 'developing countries', short: 'All developing countries',
       public: [23.3, 27.9, 26.0, 31.5, 30.4, 28.2], private: [1.8, 4.1, 1.5, 4.6, 4.4, 3.2],
       total: [25.0, 32.0, 27.4, 36.0, 34.8, 31.4],
-      instr2024: [12.3, 7.6, 7.9, 0.5], goal: 120, needs: [420, 420] },
+      goal2035: 120, needs: [305, 305] },
     ldcsids: { name: 'LDCs and SIDS', short: 'LDCs and SIDS combined',
       public: LDC.map((v, i) => +(v + SIDS[i]).toFixed(1)), private: null,
-      instr2024: [6.5, 3.6, 1.6, null], goal: 44, needs: [53, 71] },
+      goal2035: 44, needs: [38, 51] },
     ldc: { name: 'LDCs', short: 'Least developed countries', public: LDC, private: null,
-      instr2024: [5.6, 3.4, 1.3, null], goal: 39, needs: null },
+      goal2035: 39, needs: null },
     sids: { name: 'SIDS', short: 'Small island developing States', public: SIDS, private: null,
-      instr2024: [0.9, 0.2, 0.3, null], goal: 5.1, needs: null }
+      goal2035: 5.1, needs: null }
   };
-  const INSTR = ['Grants', 'Concessional loans', 'Non-concessional loans', 'Other non-concessional'];
+  for (const g of Object.values(GROUPS)) g.goal = to2024(g.goal2035);
   for (const [k, g] of Object.entries(GROUPS)) {
     if (g.public.length !== YEARS.length || (g.private && g.private.length !== YEARS.length)) throw new Error(`${k}: wrong series length`);
   }
@@ -124,8 +127,8 @@
     const titles = {
       all: 'Even tripled by 2035, adaptation finance would fall far short of estimated needs',
       ldcsids: 'Tripled adaptation finance would cover most of LDC and SIDS needs in 2035',
-      ldc: 'Meeting the 2035 goal means almost quadrupling adaptation finance to LDCs',
-      sids: 'Meeting the 2035 goal means more than tripling adaptation finance to SIDS'
+      ldc: 'Meeting the 2035 goal means almost tripling adaptation finance to LDCs',
+      sids: 'Meeting the 2035 goal means more than doubling adaptation finance to SIDS'
     };
     document.getElementById('vizTitle').textContent = titles[state.group];
     const visible = {
@@ -140,8 +143,9 @@
     if (state.group !== 'all') visible.push('There is no separate goal for LDCs or SIDS: the goal shown assumes their share of finance holds as the total triples.');
     renderNotes(document.getElementById('notes'), {
       visible,
-      notes: ['Flows to 2024 are international public adaptation finance committed by developed countries, in constant 2024 US$.',
-              'The 2035 goal triples the 2025 doubling target and, like needs, is in 2035 prices, assuming 3% annual inflation.',
+      notes: ['All values are in constant 2024 US$.',
+              'Flows are international public adaptation finance committed by developed countries.',
+              `The 2035 goal triples the 2025 doubling target (US$${g.goal2035}bn in 2035 prices) and is converted to 2024 prices using the report’s assumption of 3% annual inflation.`,
               'The dashed line joins 2024 flows to the goal and is not a forecast.']
     });
   }
@@ -198,8 +202,7 @@
       attachTip(ng, () => ({ title: `${g.short}: estimated needs, 2035`, rows: [
         ...(g.needs[0] === g.needs[1] ? [['Central estimate', usd(g.needs[0], 0)]]
             : [['Lower estimate', usd(g.needs[0], 0)], ['Upper estimate', usd(g.needs[1], 0)]]),
-        ['Goal covers', g.needs[0] === g.needs[1] ? pct(g.goal / g.needs[0]) : `${Math.round(g.goal / g.needs[1] * 100)}–${pct(Math.min(1, g.goal / g.needs[0]))}`],
-        ['Prices', '2035, 3% inflation']
+        ['Goal covers', g.needs[0] === g.needs[1] ? pct(g.goal / g.needs[0]) : `${Math.round(g.goal / g.needs[1] * 100)}–${pct(Math.min(1, g.goal / g.needs[0]))}`]
       ] }));
       s.append(ng);
     }
@@ -232,7 +235,8 @@
     gg.append(gl1, gl2);
     attachTip(gg, () => ({ title: `${g.short}: 2035 goal`, rows: [
       ['Goal', usd(g.goal)], ['2024 flows', usd(latest(g))], ['Increase needed', `${(g.goal / latest(g)).toFixed(1)}×`],
-      ...(g.needs ? [['Gap to needs', g.needs[0] === g.needs[1] ? usd(g.needs[0] - g.goal, 0) : `US$${Math.max(0, g.needs[0] - g.goal)}–${g.needs[1] - g.goal}bn`]] : [])
+      ...(g.needs ? [['Gap to needs', g.needs[0] === g.needs[1] ? usd(g.needs[0] - g.goal)
+          : `US$${Math.max(0, g.needs[0] - g.goal).toFixed(1)}–${(g.needs[1] - g.goal).toFixed(1)}bn`]] : [])
     ] }));
     s.append(gg);
 
@@ -256,7 +260,6 @@
       attachTip(pg, () => {
         const rows = seriesFor(g).map(ser => [ser.label, usd(g[ser.key][i])]);
         if (g.private) rows.push(['Total', usd(g.total[i])]);
-        if (yr === 2024) g.instr2024.forEach((v, k) => { if (v != null) rows.push([`${INSTR[k]} (public)`, usd(v)]); });
         return { title: `${g.short}, ${yr}`, rows };
       });
       s.append(pg);
