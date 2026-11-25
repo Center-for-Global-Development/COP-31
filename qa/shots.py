@@ -31,7 +31,15 @@ STATES = {
         "usd": "#measureToggle [data-value=usd]",
         "vuln": "#compareToggle [data-value=vuln]",
     },
+    "f4-flows-to-2035.html": {
+        "all": None,
+        "ldcsids": "ldcsids",
+        "ldc": "ldc",
+        "sids": "sids",
+    },
 }
+SELECT = ("(v) => { const s = document.getElementById('groupSelect');"
+          " s.value = v; s.dispatchEvent(new Event('change')); }")
 
 
 def main() -> None:
@@ -44,8 +52,10 @@ def main() -> None:
                     page = browser.new_page(viewport={"width": w, "height": 900})
                     page.goto(f"http://127.0.0.1:{port}/{fig}", wait_until="load")
                     page.wait_for_function("() => window.CGD_READY === true", timeout=15000)
-                    if sel:
+                    if sel and sel.startswith("#"):
                         page.evaluate(CLICK, sel)
+                    elif sel:
+                        page.evaluate(SELECT, sel)
                     page.wait_for_timeout(300)
                     path = OUT / f"{fig[:2]}-{label}-{w}.png"
                     page.screenshot(path=str(path), full_page=True)

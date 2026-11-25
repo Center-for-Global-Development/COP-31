@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en" data-cgd-interactive-name="adaptation-gap-2026-f4-trajectory">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Adaptation finance flows, goal and needs to 2035</title>
+<link rel="stylesheet" href="shared/cgd-figure.css?v=20261125a">
+<link rel="stylesheet" href="shared/cgd-responsive.css?v=20261125a">
+<link rel="stylesheet" href="shared/agr.css?v=20261125a">
+<style>
+  .group-control{flex:0 1 250px;min-width:0}
+  .area-mark{fill:var(--mark-fill)}
+  .needs-col{fill:url(#needsHatch);stroke:#394649;stroke-width:1.2;stroke-dasharray:5 3}
+  .goal-line{stroke:#1A272A;stroke-width:2;stroke-dasharray:7 5;fill:none}
+  .goal-dot{fill:#fff;stroke:#1A272A;stroke-width:2}
+  .year-dot{fill:#fff;stroke:#0B4C5B;stroke-width:1.6}
+  .guide{stroke:#85A5AD;stroke-width:1}
+  .ann{fill:#1A272A;font-size:10.5px}
+  .ann-strong{fill:#1A272A;font-size:11px;font-weight:700}
+  .swatch.swatch-needs{background:repeating-linear-gradient(135deg,#85A5AD 0 2px,#fff 2px 5px) !important;border:1px dashed #394649}
+  .swatch.swatch-goal{background:transparent !important;border:0;border-top:2px dashed #1A272A;border-radius:0;height:0;width:16px}
+</style>
+</head>
+<body>
+<div id="vizRoot" class="viz-wrapper">
+  <div class="header-row">
+    <div class="title-block"><h1 id="vizTitle">Even tripled by 2035, adaptation finance would fall far short of estimated needs</h1></div>
+    <button class="fullscreen-btn" id="fullscreenBtn" type="button" aria-label="View fullscreen" data-tip="View fullscreen">
+      <svg class="icon-expand" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M21 16v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="icon-compress" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3v5H3M16 3v5h5M8 21v-5H3M16 21v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
+  <div class="controls" aria-label="Chart controls">
+    <div class="control-group group-control">
+      <label for="groupSelect">Recipients</label>
+      <select id="groupSelect" class="plain-select">
+        <option value="all" selected>All developing countries</option>
+        <option value="ldcsids">LDCs and SIDS combined</option>
+        <option value="ldc">Least developed countries</option>
+        <option value="sids">Small island developing States</option>
+      </select>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title">US$ billion per year</h2>
+      <div class="legend" id="legend" aria-label="Legend"></div>
+    </div>
+    <div class="chart-area"><div class="chart-wrap" id="chartWrap"></div></div>
+  </section>
+
+  <div class="notes" id="notes"></div>
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+</div>
+
+<script src="shared/dom.js?v=20261125a"></script>
+<script src="shared/chart-core.js?v=20261125a"></script>
+<script src="shared/agr.js?v=20261125a"></script>
+<script>
+(() => {
+  const { svgEl } = window.CGDDom;
+  const { observeInlineSize, createSvg, getLayout } = window.CGDCore;
+  const { usd, pct, renderNotes, legend, attachTip, hideTip, wireFullscreen, niceTicks } = window.AGR;
+
+  /* UNEP AGR 2026.
+     Flows 2019-2024, constant 2024 US$: fig 2.3a (all developing countries,
+     public + mobilised private) and fig 2.4 (LDCs, SIDS, public only).
+     2024 instrument split: fig 2.5.
+     2035 goal = tripling of the 2025 doubling, 2035 prices: US$120bn (fig 2.7,
+     table 2.3); LDCs US$39bn and SIDS US$5.1bn (section 2.4.1); combined US$44bn
+     (fig 2.8). Needs in 2035, 2035 prices: US$420bn (fig 2.7); LDCs and SIDS
+     US$53-71bn (fig 2.8). UNEP gives no separate needs for LDCs or SIDS. */
+  const YEARS = [2019, 2020, 2021, 2022, 2023, 2024];
+  const LDC = [7.5, 9.5, 8.5, 12.1, 10.5, 10.2], SIDS = [1.0, 1.2, 1.3, 1.7, 1.2, 1.4];
+  const GROUPS = {
+    all: { name: 'developing countries', short: 'All developing countries',
+      public: [23.3, 27.9, 26.0, 31.5, 30.4, 28.2], private: [1.8, 4.1, 1.5, 4.6, 4.4, 3.2],
+      total: [25.0, 32.0, 27.4, 36.0, 34.8, 31.4],
+      instr2024: [12.3, 7.6, 7.9, 0.5], goal: 120, needs: [420, 420] },
+    ldcsids: { name: 'LDCs and SIDS', short: 'LDCs and SIDS combined',
+      public: LDC.map((v, i) => +(v + SIDS[i]).toFixed(1)), private: null,
+      instr2024: [6.5, 3.6, 1.6, null], goal: 44, needs: [53, 71] },
+    ldc: { name: 'LDCs', short: 'Least developed countries', public: LDC, private: null,
+      instr2024: [5.6, 3.4, 1.3, null], goal: 39, needs: null },
+    sids: { name: 'SIDS', short: 'Small island developing States', public: SIDS, private: null,
+      instr2024: [0.9, 0.2, 0.3, null], goal: 5.1, needs: null }
+  };
+  const INSTR = ['Grants', 'Concessional loans', 'Non-concessional loans', 'Other non-concessional'];
+  for (const [k, g] of Object.entries(GROUPS)) {
+    if (g.public.length !== YEARS.length || (g.private && g.private.length !== YEARS.length)) throw new Error(`${k}: wrong series length`);
+  }
+  const SERIES = [
+    { key: 'public', label: 'Public finance', colour: '#006970', tip: 'International public adaptation finance from developed countries' },
+    { key: 'private', label: 'Mobilised private', colour: '#2D99B5', tip: 'Private finance mobilised by public adaptation finance' }
+  ];
+
+  const state = { group: 'all', hidden: new Set() };
+  const wrap = document.getElementById('chartWrap');
+  const select = document.getElementById('groupSelect');
+  const seriesFor = g => SERIES.filter(s => g[s.key]);
+  const shownSeries = g => seriesFor(g).filter(s => !state.hidden.has(s.key));
+  const allShown = g => shownSeries(g).length === seriesFor(g).length;
+  const stackTop = (g, i) => shownSeries(g).reduce((s, ser) => s + g[ser.key][i], 0);
+  const latest = g => (allShown(g) && g.total) ? g.total[YEARS.length - 1] : stackTop(g, YEARS.length - 1);
+
+  function renderLegend() {
+    const g = GROUPS[state.group];
+    const items = seriesFor(g).map(s => ({ ...s, toggle: seriesFor(g).length > 1 }));
+    items.push({ key: 'goal', label: 'Path to 2035 goal', colour: 'transparent', swatchClass: 'swatch-goal', toggle: false,
+                 tip: 'Straight line from 2024 flows to the goal of tripling the 2025 doubling level; not a forecast' });
+    if (g.needs) items.push({ key: 'needs', label: 'Estimated needs, 2035', colour: '#fff', swatchClass: 'swatch-needs', toggle: false,
+                 tip: 'UNEP estimate of adaptation finance needs in 2035' });
+    legend(document.getElementById('legend'), items, state.hidden, (key, hide) => {
+      hide ? state.hidden.add(key) : state.hidden.delete(key);
+      window.CGDTracking?.engagement('view_control', 'series_toggle', `${key}_${hide ? 'hidden' : 'shown'}`);
+      render();
+    });
+  }
+
+  function renderText() {
+    const g = GROUPS[state.group];
+    const titles = {
+      all: 'Even tripled by 2035, adaptation finance would fall far short of estimated needs',
+      ldcsids: 'Tripled adaptation finance would cover most of LDC and SIDS needs in 2035',
+      ldc: 'Meeting the 2035 goal means almost quadrupling adaptation finance to LDCs',
+      sids: 'Meeting the 2035 goal means more than tripling adaptation finance to SIDS'
+    };
+    document.getElementById('vizTitle').textContent = titles[state.group];
+    const visible = {
+      all: ['Mobilised private finance is the total mobilised, not only the share attributable to developed countries.',
+            'Needs are UNEP’s central estimate, averaging countries’ own costings and modelling.'],
+      ldcsids: ['LDC and SIDS flows are added together, so the few countries in both groups are counted twice, as in the report.',
+                'The needs column spans UNEP’s estimates, from modelling to countries’ own costings.',
+                'Mobilised private finance is not reported for these groups.'],
+      ldc: ['UNEP does not estimate needs for LDCs or SIDS separately.', 'Mobilised private finance is not reported for this group.'],
+      sids: ['UNEP does not estimate needs for LDCs or SIDS separately.', 'Mobilised private finance is not reported for this group.']
+    }[state.group];
+    if (state.group !== 'all') visible.push('There is no separate goal for LDCs or SIDS: the goal shown assumes their share of finance holds as the total triples.');
+    renderNotes(document.getElementById('notes'), {
+      visible,
+      notes: ['Flows to 2024 are international public adaptation finance committed by developed countries, in constant 2024 US$.',
+              'The 2035 goal triples the 2025 doubling target and, like needs, is in 2035 prices, assuming 3% annual inflation.',
+              'The dashed line joins 2024 flows to the goal and is not a forecast.']
+    });
+  }
+
+  function draw(width) {
+    const g = GROUPS[state.group];
+    const L = getLayout(width);
+    const compact = L.name === 'compact';
+    const height = compact ? 290 : 340;
+    const m = { top: 30, right: compact ? 14 : 22, bottom: 24, left: 32 };
+    const plotW = width - m.left - m.right, plotH = height - m.top - m.bottom;
+    const yMax = Math.max(g.goal, g.needs ? g.needs[1] : 0, ...YEARS.map((_, i) => stackTop(g, i))) * 1.06;
+    const { top, ticks } = niceTicks(yMax, compact ? 4 : 5);
+    const x0 = 2018.6, x1 = 2035.55;
+    const x = yr => m.left + (yr - x0) / (x1 - x0) * plotW;
+    const y = v => m.top + plotH - (v / top) * plotH;
+    const colW = Math.min(44, Math.max(18, (x(2035) - x(2034)) * 1.3));
+
+    const s = createSvg(wrap, width, height,
+      `Stacked area chart of adaptation finance to ${g.short}, 2019 to 2024, with a dashed path to the 2035 goal` + (g.needs ? ' and a column for estimated 2035 needs' : ''));
+    const defs = svgEl('defs');
+    const pat = svgEl('pattern', { id: 'needsHatch', width: 7, height: 7, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' });
+    pat.append(svgEl('rect', { width: 7, height: 7, fill: '#fff' }), svgEl('line', { x1: 0, y1: 0, x2: 0, y2: 7, stroke: '#85A5AD', 'stroke-width': 3 }));
+    defs.append(pat); s.append(defs);
+
+    // Axes
+    const axis = svgEl('g', { class: 'axis' });
+    ticks.forEach(t => {
+      axis.append(svgEl('line', { class: 'grid-line', x1: m.left, x2: m.left + plotW, y1: y(t), y2: y(t) }));
+      const lab = svgEl('text', { x: m.left - 6, y: y(t) + 3.5, 'text-anchor': 'end', class: 'small-text' });
+      lab.textContent = String(t); axis.append(lab);
+    });
+    axis.append(svgEl('line', { x1: m.left, x2: m.left + plotW, y1: y(0), y2: y(0), stroke: '#1A272A' }));
+    const xt = compact ? [2019, 2024, 2030, 2035] : [2019, 2020, 2021, 2022, 2023, 2024, 2030, 2035];
+    xt.forEach(yr => {
+      const t = svgEl('text', { x: x(yr), y: y(0) + 15, 'text-anchor': 'middle', class: 'small-text' });
+      t.textContent = String(yr); axis.append(t);
+    });
+    s.append(axis);
+
+    // Estimated needs: a striped, dashed-outline column at 2035, so it reads as an estimate.
+    if (g.needs) {
+      const ng = svgEl('g', { class: 'hit', tabindex: '0', role: 'img',
+        'aria-label': `Estimated needs in 2035: ${g.needs[0] === g.needs[1] ? usd(g.needs[0], 0) : `US$${g.needs[0]}–${g.needs[1]}bn`}` });
+      ng.append(svgEl('rect', { class: 'needs-col', x: x(2035) - colW / 2, y: y(g.needs[1]), width: colW, height: y(0) - y(g.needs[1]) }));
+      if (g.needs[0] !== g.needs[1]) {
+        ng.append(svgEl('line', { x1: x(2035) - colW / 2 - 3, x2: x(2035) + colW / 2 + 3, y1: y(g.needs[0]), y2: y(g.needs[0]), stroke: '#394649', 'stroke-width': 1.2 }));
+      }
+      const l1 = svgEl('text', { class: 'ann', x: x(2035) + colW / 2, y: y(g.needs[1]) - 18, 'text-anchor': 'end' });
+      l1.textContent = 'Estimated needs';
+      const l2 = svgEl('text', { class: 'ann-strong', x: x(2035) + colW / 2, y: y(g.needs[1]) - 5, 'text-anchor': 'end' });
+      l2.textContent = g.needs[0] === g.needs[1] ? usd(g.needs[0], 0) : `US$${g.needs[0]}–${g.needs[1]}bn`;
+      ng.append(l1, l2);
+      attachTip(ng, () => ({ title: `${g.short}: estimated needs, 2035`, rows: [
+        ...(g.needs[0] === g.needs[1] ? [['Central estimate', usd(g.needs[0], 0)]]
+            : [['Lower estimate', usd(g.needs[0], 0)], ['Upper estimate', usd(g.needs[1], 0)]]),
+        ['Goal covers', g.needs[0] === g.needs[1] ? pct(g.goal / g.needs[0]) : `${Math.round(g.goal / g.needs[1] * 100)}–${pct(Math.min(1, g.goal / g.needs[0]))}`],
+        ['Prices', '2035, 3% inflation']
+      ] }));
+      s.append(ng);
+    }
+
+    // Stacked areas, 2019-2024.
+    let base = YEARS.map(() => 0);
+    shownSeries(g).forEach(ser => {
+      const topV = YEARS.map((_, i) => base[i] + g[ser.key][i]);
+      const d = 'M' + YEARS.map((yr, i) => `${x(yr)},${y(topV[i])}`).join('L') +
+                'L' + YEARS.slice().reverse().map((yr, ri) => `${x(yr)},${y(base[YEARS.length - 1 - ri])}`).join('L') + 'Z';
+      const p = svgEl('path', { class: 'area-mark', d });
+      p.style.setProperty('--mark-fill', ser.colour);
+      s.append(p);
+      base = topV;
+    });
+
+    // Dashed path from 2024 to the 2035 goal.
+    const lastY = y(stackTop(g, YEARS.length - 1));
+    s.append(svgEl('path', { class: 'goal-line', d: `M${x(2024)},${lastY}L${x(2035)},${y(g.goal)}` }));
+
+    // Goal marker and label (label sits left of the needs column).
+    const gg = svgEl('g', { class: 'hit', tabindex: '0', role: 'img', 'aria-label': `2035 goal: ${usd(g.goal)}` });
+    gg.append(svgEl('circle', { class: 'goal-dot', cx: x(2035), cy: y(g.goal), r: 5 }));
+    // Label sits above the point: the dashed line arrives from below-left, so
+    // text placed level with the point would be struck through by it.
+    const gl1 = svgEl('text', { class: 'ann', x: x(2035) - colW / 2 - 6, y: y(g.goal) - 22, 'text-anchor': 'end' });
+    gl1.textContent = 'Goal: triple 2025';
+    const gl2 = svgEl('text', { class: 'ann-strong', x: x(2035) - colW / 2 - 6, y: y(g.goal) - 9, 'text-anchor': 'end' });
+    gl2.textContent = usd(g.goal);
+    gg.append(gl1, gl2);
+    attachTip(gg, () => ({ title: `${g.short}: 2035 goal`, rows: [
+      ['Goal', usd(g.goal)], ['2024 flows', usd(latest(g))], ['Increase needed', `${(g.goal / latest(g)).toFixed(1)}×`],
+      ...(g.needs ? [['Gap to needs', g.needs[0] === g.needs[1] ? usd(g.needs[0] - g.goal, 0) : `US$${Math.max(0, g.needs[0] - g.goal)}–${g.needs[1] - g.goal}bn`]] : [])
+    ] }));
+    s.append(gg);
+
+    // Latest value label.
+    const ll = svgEl('text', { class: 'ann-strong', x: x(2024), y: lastY - 9, 'text-anchor': 'middle' });
+    ll.textContent = latest(g).toFixed(1);
+    s.append(ll);
+
+    // One focusable point per year: dot on the stack top plus a full-height hit band.
+    const band = (x(2020) - x(2019));
+    YEARS.forEach((yr, i) => {
+      const pg = svgEl('g', { class: 'hit', tabindex: '0', role: 'img', 'aria-label': `${yr}: ${usd(allShown(g) && g.total ? g.total[i] : stackTop(g, i))}` });
+      const guide = svgEl('line', { class: 'guide', x1: x(yr), x2: x(yr), y1: m.top, y2: y(0), opacity: 0 });
+      pg.append(guide);
+      pg.append(svgEl('circle', { class: 'year-dot', cx: x(yr), cy: y(stackTop(g, i)), r: compact ? 3 : 3.5 }));
+      pg.append(svgEl('rect', { x: x(yr) - band / 2, y: m.top, width: band, height: plotH, fill: 'transparent' }));
+      pg.addEventListener('pointerenter', () => guide.setAttribute('opacity', 1));
+      pg.addEventListener('pointerleave', () => guide.setAttribute('opacity', 0));
+      pg.addEventListener('focus', () => guide.setAttribute('opacity', 1));
+      pg.addEventListener('blur', () => guide.setAttribute('opacity', 0));
+      attachTip(pg, () => {
+        const rows = seriesFor(g).map(ser => [ser.label, usd(g[ser.key][i])]);
+        if (g.private) rows.push(['Total', usd(g.total[i])]);
+        if (yr === 2024) g.instr2024.forEach((v, k) => { if (v != null) rows.push([`${INSTR[k]} (public)`, usd(v)]); });
+        return { title: `${g.short}, ${yr}`, rows };
+      });
+      s.append(pg);
+    });
+  }
+
+  function render() {
+    hideTip();
+    renderLegend();
+    renderText();
+    draw(Math.max(280, Math.floor(wrap.getBoundingClientRect().width) || 600));
+  }
+
+  select.addEventListener('change', () => {
+    state.group = select.value; state.hidden.clear();
+    window.CGDTracking?.engagement('filter', 'recipient_group', select.value);
+    render();
+  });
+  wireFullscreen();
+  render();
+  observeInlineSize(wrap, w => draw(Math.max(280, w)));
+  (document.fonts?.ready || Promise.resolve()).then(() => { render(); window.CGD_READY = true; });
+})();
+</script>
+<script src="shared/cgd-embed.js?v=20261125a"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Adaptation Gap Report 2026: interactive figures
 
-Three embeddable CGD figures built from UNEP's *Adaptation Gap Report 2026: Ready? Not.*
+Four embeddable CGD figures built from UNEP's *Adaptation Gap Report 2026: Ready? Not.*
 (main report and appendices, November 2026). They show adaptation finance needs and
 flows at group level; the report does not publish per-country needs or flows.
 
@@ -9,8 +9,9 @@ flows at group level; the report does not publish per-country needs or flows.
 | `f1-flows-2019-2024.html` | How have adaptation flows moved since 2019, against the Glasgow doubling target? | All developing countries | Recipients (all / LDCs / SIDS); legend toggles public vs mobilised private |
 | `f2-finance-gap-2035.html` | How much of 2035 needs would tripled flows meet? | All developing countries; triple the 2025 doubling | Recipients (all / LDCs and SIDS); flow scenario |
 | `f3-instruments-2024.html` | Who gets grants and who gets loans? | Income groups; shares | Recipients (income groups / LDCs and SIDS); measure (share / US$); legend toggles instruments |
+| `f4-flows-to-2035.html` | How far are flows from the 2035 goal, and from estimated needs? | All developing countries | Recipients (all / LDCs and SIDS combined / LDCs / SIDS); legend toggles public vs mobilised private |
 
-`preview.html` embeds all three the way cgdev.org does (review only, not for publication).
+`preview.html` embeds all four the way cgdev.org does (review only, not for publication).
 
 ## Embedding
 
@@ -32,6 +33,8 @@ extracted text:
   2024 LDC and SIDS values also match appendix table 2.C.5.
 * f2: figures 2.7 and 2.8. Gaps are computed in the figure (needs minus flows) and
   reproduce the report's printed gaps: 335 / 300 / 231 and 36 / 27 / 12.
+* f4: flows as f1; 2035 goal from figure 2.7 / table 2.3 (US$120bn), section 2.4.1 (LDCs US$39bn, SIDS US$5.1bn) and
+  figure 2.8 (combined US$44bn); needs from figures 2.7 and 2.8; 2024 instrument split in the tooltip from figure 2.5.
 * f3: figure 2.5. Income-group totals match appendix table 2.C.4 (5.6, 12.5, 5.3, 0.1).
 
 Hand-checked benchmarks: 2024 flows US$31.4bn (28.2 public + 3.2 private); tripling the
@@ -50,6 +53,18 @@ doubling meets 120/420 = 29% of 2035 needs; low-income grant share 4.1/5.6 = 73%
   scenario control, so a show/hide legend would duplicate that control.
 * **LDCs and SIDS are combined in f2** because the report gives needs only for the
   combined group.
+
+* **f4 mixes price bases on one axis.** Flows to 2024 are constant 2024 US$; the 2035 goal
+  and needs are 2035 prices, as the report compares them (figure 2.7). Stated in the notes.
+  Showing 2024-price equivalents (goal US$88.5bn in 2025 prices, needs US$305bn) was the
+  alternative; the request was for the US$120bn goal as stated.
+* **No instrument control in f4.** The report gives the grants/loans split for 2024 only,
+  so an instrument time series cannot be drawn. The 2024 split is in the 2024 tooltip.
+* **f4 needs column** appears only where UNEP estimates needs (all developing countries;
+  LDCs and SIDS combined). LDC and SIDS flows are summed for the combined view, double-
+  counting the few countries in both, as the report does for 2035.
+* **f4 group goals** (LDCs US$39bn, SIDS US$5.1bn) assume a proportional share of the
+  tripled total; the report says there is no separate group goal.
 
 ## Dependencies
 

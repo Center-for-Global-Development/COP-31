@@ -15,5 +15,8 @@ Sent by `shared/cgd-embed.js` to `https://www.cgdev.org` as `type: 'cgd_analytic
 | | `view_control` | `measure` | `share`, `usd` |
 | | `view_control` | `instrument_toggle` | `<grant\|conc\|nonconc\|other>_<hidden\|shown>` |
 | | `view_control` | `fullscreen` | none |
+| `adaptation-gap-2026-f4-trajectory` | `filter` | `recipient_group` | `all`, `ldcsids`, `ldc`, `sids` |
+| | `view_control` | `series_toggle` | `public_hidden`, `public_shown`, `private_hidden`, `private_shown` |
+| | `view_control` | `fullscreen` | none |
 
 Hover, tooltips, resize and scroll are not tracked.
