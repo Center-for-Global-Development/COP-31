@@ -64,7 +64,7 @@ doubling meets 120/420 = 29% of 2035 needs; low-income grant share 4.1/5.6 = 73%
 * **f4 needs column** appears only where UNEP estimates needs (all developing countries;
   LDCs and SIDS combined). LDC and SIDS flows are summed for the combined view, double-
   counting the few countries in both, as the report does for 2035.
-* **f4 group goals** (LDCs US$39bn, SIDS US$5.1bn) assume a proportional share of the
+* **f4 group goals** (LDCs US$39bn, SIDS US$5.1bn in 2035 prices) assume a proportional share of the
   tripled total; the report says there is no separate group goal.
 
 ## Dependencies
