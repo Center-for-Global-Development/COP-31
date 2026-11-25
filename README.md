@@ -15,7 +15,7 @@ flows at group level; the report does not publish per-country needs or flows.
 ## Embedding
 
 ```html
-<iframe src="https://center-for-global-development.github.io/adaptation-gap-2026/f1-flows-2019-2024.html"
+<iframe src="https://center-for-global-development.github.io/COP-31/f1-flows-2019-2024.html"
   title="Bar chart: international adaptation finance to developing countries, LDCs and SIDS, 2019 to 2024"
   loading="lazy" scrolling="no" style="display:block;width:100%;height:560px;border:0"></iframe>
 ```
