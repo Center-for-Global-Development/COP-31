@@ -1,0 +1,32 @@
+/* Set-specific marks for the AGR 2026 figures. Loaded after cgd-figure.css and
+   cgd-responsive.css. Shared chrome (controls, panel, legend, tooltip, notes)
+   comes from the CGD layer and is not overridden here. */
+.chart-wrap{width:100%}
+.seg-mark{fill:var(--mark-fill)}
+.seg-mark.dim{opacity:.22}
+.target-mark{fill:#FEE8BF;stroke:#8A5E00;stroke-width:1.5;stroke-dasharray:4 3}
+.range-mark{fill:url(#agrHatch);stroke:#0B4C5B;stroke-width:1}
+.gap-line{stroke:#394649;stroke-width:1.2;stroke-dasharray:4 3;fill:none}
+.gap-arrow{stroke:#394649;stroke-width:1.4;fill:none}
+.gap-label{fill:#1A272A;font-size:11.5px;font-weight:700}
+.gap-sub{fill:#394649;font-size:10.5px}
+.bar-total{fill:#1A272A;font-size:10.5px;font-weight:700}
+.seg-label{font-size:10.5px;font-weight:600;pointer-events:none}
+.cat-label{fill:#394649;font-size:10.5px}
+.hit{cursor:pointer}
+.legend-static{cursor:default}
+.swatch.swatch-target{background:#FEE8BF !important;border:1.5px dashed #8A5E00}
+/* Phones: one control per row, so no option text is cut off; the legend sits
+   under the panel title instead of being pushed out of the panel. */
+@media (max-width:520px){
+  .viz-wrapper .controls > .control-group{grid-column:1 / -1}
+  .viz-wrapper .controls .plain-select{width:100%}
+  .viz-wrapper .panel-header{grid-template-columns:minmax(0,1fr);gap:4px}
+  .viz-wrapper .panel-title{white-space:normal}
+  .viz-wrapper .panel-header .legend{justify-content:flex-start}
+}
+html.cgd-mobile-embed .viz-wrapper .controls > .control-group{grid-column:1 / -1}
+html.cgd-mobile-embed .viz-wrapper .panel-header{grid-template-columns:minmax(0,1fr);gap:4px}
+html.cgd-mobile-embed .viz-wrapper .panel-title{white-space:normal}
+html.cgd-mobile-embed .viz-wrapper .panel-header .legend{justify-content:flex-start}
+.swatch.swatch-range{background:repeating-linear-gradient(135deg,#0B4C5B 0 2px,#BFDEE0 2px 5px) !important}

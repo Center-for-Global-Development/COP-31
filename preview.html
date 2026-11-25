@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-cgd-harness="true">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Adaptation Gap Report 2026 figures — review page</title>
+<style>
+  :root{--font-sans:"Sofia Pro","Inter","Helvetica Neue",Arial,sans-serif}
+  body{margin:0;padding:24px 16px;background:#F3F6F7;color:#1A272A;font-family:var(--font-sans)}
+  .page{max-width:760px;margin:0 auto}
+  p{font-size:14px;line-height:1.5;color:#394649}
+  iframe{display:block;width:100%;border:0;background:#fff;height:560px;margin-bottom:6px}
+  h2{font-size:15px;color:#0B4C5B;margin:26px 0 8px}
+  a{color:#0B4C5B;font-size:12px}
+  #log{font:12px/1.5 ui-monospace,Consolas,monospace;color:#394649;white-space:pre-wrap;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="page">
+  <p>Review page: embeds each figure the way cgdev.org does and applies the height it reports. Not for publication.</p>
+
+  <h2>Figure 1: adaptation finance flows, 2019–2024</h2>
+  <iframe class="fig" src="f1-flows-2019-2024.html?v=20261125a" title="Bar chart: international adaptation finance to developing countries, LDCs and SIDS, 2019 to 2024, against the 2025 doubling target"></iframe>
+  <a href="f1-flows-2019-2024.html?v=20261125a">Open standalone</a>
+
+  <h2>Figure 2: the adaptation finance gap in 2035</h2>
+  <iframe class="fig" src="f2-finance-gap-2035.html?v=20261125a" title="Bar chart: adaptation finance needs against flow scenarios in 2035"></iframe>
+  <a href="f2-finance-gap-2035.html?v=20261125a">Open standalone</a>
+
+  <h2>Figure 3: adaptation finance by instrument, 2024</h2>
+  <iframe class="fig" src="f3-instruments-2024.html?v=20261125a" title="Stacked bar chart: 2024 adaptation finance by instrument for income groups, LDCs and SIDS"></iframe>
+  <a href="f3-instruments-2024.html?v=20261125a">Open standalone</a>
+
+  <div id="log"></div>
+</div>
+<script>
+  // One listener; each message is matched to the iframe that sent it, so the
+  // log shows whether a frame shrinks as well as grows. Bump ?v= with the
+  // assets on every change: Pages caches HTML for ten minutes.
+  const frames = [...document.querySelectorAll('iframe.fig')], log = document.getElementById('log');
+  const lines = [];
+  window.addEventListener('message', e => {
+    const i = frames.findIndex(f => f.contentWindow === e.source);
+    if (i < 0 || !e.data || e.data.type !== 'cgd-iframe-resize') return;
+    const frame = frames[i];
+    const before = parseInt(frame.style.height || frame.clientHeight, 10);
+    frame.style.height = e.data.height + 'px';
+    lines.push(`${new Date().toLocaleTimeString()}  figure ${i + 1}: height ${before} → ${e.data.height}`);
+    log.textContent = lines.slice(-12).join('\n');
+  });
+</script>
+</body>
+</html>

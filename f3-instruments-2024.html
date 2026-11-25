@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en" data-cgd-interactive-name="adaptation-gap-2026-f3-instruments">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Adaptation finance by instrument, 2024</title>
+<link rel="stylesheet" href="shared/cgd-figure.css?v=20261125a">
+<link rel="stylesheet" href="shared/cgd-responsive.css?v=20261125a">
+<link rel="stylesheet" href="shared/agr.css?v=20261125a">
+<style>
+  .row-label.ref{font-weight:700}
+  .ref-rule{stroke:#85A5AD;stroke-width:1;stroke-dasharray:3 3}
+</style>
+</head>
+<body>
+<div id="vizRoot" class="viz-wrapper">
+  <div class="header-row">
+    <div class="title-block"><h1 id="vizTitle">Low-income countries receive mostly grants; middle-income countries mostly loans</h1></div>
+    <button class="fullscreen-btn" id="fullscreenBtn" type="button" aria-label="View fullscreen" data-tip="View fullscreen">
+      <svg class="icon-expand" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M21 16v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="icon-compress" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3v5H3M16 3v5h5M8 21v-5H3M16 21v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
+  <div class="controls" aria-label="Chart controls">
+    <div class="control-group">
+      <div class="control-label" id="compareLabel">Recipients</div>
+      <div class="segmented" id="compareToggle" role="group" aria-labelledby="compareLabel">
+        <button type="button" data-value="income" aria-pressed="true" data-tip="World Bank income groups">Income groups</button>
+        <button type="button" data-value="vuln" aria-pressed="false" data-tip="Least developed countries and small island developing States">LDCs and SIDS</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <div class="control-label" id="measureLabel">Measure</div>
+      <div class="segmented" id="measureToggle" role="group" aria-labelledby="measureLabel">
+        <button type="button" data-value="share" aria-pressed="true">Share</button>
+        <button type="button" data-value="usd" aria-pressed="false">US$ billion</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title" id="panelTitle">Share of each group’s adaptation finance, 2024</h2>
+      <div class="legend" id="legend" aria-label="Legend: click to show or hide an instrument"></div>
+    </div>
+    <div class="chart-area"><div class="chart-wrap" id="chartWrap"></div></div>
+  </section>
+
+  <div class="notes" id="notes"></div>
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+</div>
+
+<script src="shared/dom.js?v=20261125a"></script>
+<script src="shared/chart-core.js?v=20261125a"></script>
+<script src="shared/agr.js?v=20261125a"></script>
+<script>
+(() => {
+  const { svgEl } = window.CGDDom;
+  const { observeInlineSize, createSvg, getLayout, widestLabel } = window.CGDCore;
+  const { usd, pct, renderNotes, segmented, legend, attachTip, hideTip, wireFullscreen, niceTicks } = window.AGR;
+
+  /* UNEP AGR 2026, figure 2.5 (constant 2024 US$ billion), cross-checked
+     against appendix tables 2.C.4 and 2.C.5. `null` = no value shown in the
+     source for that instrument. `total` is the report's printed total. */
+  const INSTR = [
+    { key: 'grant', label: 'Grants', colour: '#006970', text: '#fff' },
+    { key: 'conc', label: 'Concessional loans', colour: '#2D99B5', text: '#1A272A' },
+    { key: 'nonconc', label: 'Non-concessional loans', colour: '#FFB52C', text: '#1A272A' },
+    { key: 'other', label: 'Other non-concessional', colour: '#394649', text: '#fff', tip: 'Other non-concessional instruments' }
+  ];
+  const ROWS = {
+    lic:  { name: 'Low income', v: [4.1, 1.4, 0.1, null], total: 5.6 },
+    lmic: { name: 'Lower middle income', v: [3.3, 4.9, 4.2, 0.1], total: 12.5 },
+    umic: { name: 'Upper middle income', v: [1.1, 0.9, 3.3, null], total: 5.3 },
+    hic:  { name: 'High income', v: [null, null, 0.1, null], total: 0.1 },
+    ldc:  { name: 'LDCs', full: 'Least developed countries', v: [5.6, 3.4, 1.3, null], total: 10.2 },
+    sids: { name: 'SIDS', full: 'Small island developing States', v: [0.9, 0.2, 0.3, null], total: 1.4 },
+    all:  { name: 'All developing countries', v: [12.3, 7.6, 7.9, 0.5], total: 28.2, ref: true }
+  };
+  const VIEWS = { income: ['lic', 'lmic', 'umic', 'hic', 'all'], vuln: ['ldc', 'sids', 'all'] };
+  for (const [k, r] of Object.entries(ROWS)) {
+    if (r.v.length !== INSTR.length) throw new Error(`${k} has the wrong number of instruments`);
+    const sum = r.v.reduce((s, x) => s + (x || 0), 0);
+    if (Math.abs(sum - r.total) > 0.15) throw new Error(`${k}: parts ${sum} vs total ${r.total}`);
+  }
+
+  const state = { compare: 'income', measure: 'share', hidden: new Set() };
+  const wrap = document.getElementById('chartWrap');
+  const partsSum = r => r.v.reduce((s, x) => s + (x || 0), 0);
+  // Shares use the sum of the parts as denominator, so a full bar is 100%.
+  const val = (r, i) => state.measure === 'share' ? (r.v[i] || 0) / partsSum(r) : (r.v[i] || 0);
+  const fmt = (r, i) => r.v[i] == null ? 'None shown' : (state.measure === 'share' ? pct(r.v[i] / partsSum(r)) : usd(r.v[i]));
+
+  function renderLegend() {
+    legend(document.getElementById('legend'), INSTR, state.hidden, (key, hide) => {
+      hide ? state.hidden.add(key) : state.hidden.delete(key);
+      window.CGDTracking?.engagement('view_control', 'instrument_toggle', `${key}_${hide ? 'hidden' : 'shown'}`);
+      render();
+    });
+  }
+
+  function renderText() {
+    document.getElementById('vizTitle').textContent = state.compare === 'income'
+      ? 'Low-income countries receive mostly grants; middle-income countries mostly loans'
+      : 'Most adaptation finance to LDCs and SIDS comes as grants';
+    document.getElementById('panelTitle').textContent = state.measure === 'share'
+      ? 'Share of each group’s adaptation finance, 2024' : 'US$ billion, 2024';
+    renderNotes(document.getElementById('notes'), {
+      visible: state.compare === 'income'
+        ? ['Income groups are World Bank classifications.']
+        : ['Some LDCs are also SIDS.'],
+      notes: ['Values are international public adaptation-only finance from developed countries, in constant 2024 US$.',
+              'Groups include only flows identifiable to individual countries, so they do not add up to the all-developing-countries total.',
+              'Totals may differ from the sum of their parts because of rounding.']
+    });
+  }
+
+  function draw(width) {
+    const keys = VIEWS[state.compare];
+    const rows = keys.map(k => ({ key: k, ...ROWS[k] }));
+    const L = getLayout(width);
+    const compact = L.name === 'compact';
+    const shownIdx = INSTR.map((_, i) => i).filter(i => !state.hidden.has(INSTR[i].key));
+    const rowTotal = r => shownIdx.reduce((s, i) => s + val(r, i), 0);
+
+    const labelW = compact ? 0 : Math.ceil(widestLabel(rows.map(r => r.name), { fontSize: 11, fontWeight: 700 })) + 12;
+    const rowH = compact ? 42 : 30, barH = compact ? 18 : 20, refGap = 10;
+    const m = { top: 6, right: state.measure === 'usd' ? 44 : 8, bottom: 22, left: compact ? 0 : labelW };
+    const height = m.top + m.bottom + rows.length * rowH + refGap;
+    const plotW = width - m.left - m.right;
+    const max = state.measure === 'share' ? 1 : Math.max(...rows.map(rowTotal)) * 1.02;
+    const nt = state.measure === 'share' ? { top: 1, ticks: [0, .25, .5, .75, 1] } : niceTicks(max, compact ? 4 : 5);
+    const x = v => m.left + (v / nt.top) * plotW;
+
+    const s = createSvg(wrap, width, height, 'Stacked bar chart of 2024 adaptation finance by instrument for each recipient group');
+    const plotBottom = height - m.bottom;
+    const axis = svgEl('g', { class: 'axis' });
+    nt.ticks.forEach((t, i) => {
+      axis.append(svgEl('line', { class: 'grid-line', x1: x(t), x2: x(t), y1: m.top, y2: plotBottom }));
+      const anc = i === 0 ? 'start' : (i === nt.ticks.length - 1 ? 'end' : 'middle');
+      const lab = svgEl('text', { x: x(t), y: plotBottom + 14, 'text-anchor': anc, class: 'small-text' });
+      lab.textContent = state.measure === 'share' ? Math.round(t * 100) + '%' : String(t);
+      axis.append(lab);
+    });
+    s.append(axis);
+
+    rows.forEach((r, ri) => {
+      const top = m.top + ri * rowH + (r.ref ? refGap : 0);
+      if (r.ref) s.append(svgEl('line', { class: 'ref-rule', x1: 0, x2: width, y1: top - refGap / 2 + 2, y2: top - refGap / 2 + 2 }));
+      const barY = compact ? top + 17 : top + (rowH - barH) / 2;
+      const g = svgEl('g', { class: 'hit', tabindex: '0', role: 'img',
+        'aria-label': `${r.full || r.name}: ` + INSTR.map((ins, i) => `${ins.label} ${fmt(r, i)}`).join(', ') });
+      const lab = svgEl('text', { class: 'row-label' + (r.ref ? ' ref' : ''), x: compact ? 0 : m.left - 8, y: compact ? top + 12 : barY + barH / 2 + 4,
+                                   'text-anchor': compact ? 'start' : 'end' });
+      lab.textContent = r.name; g.append(lab);
+      let acc = 0;
+      shownIdx.forEach(i => {
+        const v = val(r, i); if (!v) return;
+        const ins = INSTR[i];
+        const rect = svgEl('rect', { class: 'seg-mark', x: x(acc), y: barY, width: Math.max(1, x(acc + v) - x(acc)), height: barH });
+        rect.style.setProperty('--mark-fill', ins.colour); g.append(rect);
+        const segW = x(acc + v) - x(acc);
+        const txt = state.measure === 'share' ? pct(v) : v.toFixed(1);
+        if (segW >= txt.length * 6.2 + 6) {
+          const t = svgEl('text', { class: 'seg-label', x: x(acc) + segW / 2, y: barY + barH / 2 + 3.5, 'text-anchor': 'middle', fill: ins.text });
+          t.textContent = txt; g.append(t);
+        }
+        acc += v;
+      });
+      if (state.measure === 'usd') {
+        const t = svgEl('text', { class: 'bar-total', x: x(acc) + 5, y: barY + barH / 2 + 3.5 });
+        // With every instrument shown, print the report's own total (it can
+        // differ from the sum of the rounded parts by 0.1).
+        t.textContent = (shownIdx.length === INSTR.length ? r.total : acc).toFixed(1); g.append(t);
+      }
+      g.append(svgEl('rect', { x: 0, y: top, width, height: rowH, fill: 'transparent' }));
+      attachTip(g, () => ({ title: `${r.full || r.name}, 2024`, rows: [
+        ...INSTR.map((ins, i) => [ins.label, fmt(r, i)]),
+        ['Total', usd(r.total)]
+      ] }));
+      s.append(g);
+    });
+  }
+
+  function render() {
+    hideTip();
+    renderLegend();
+    renderText();
+    draw(Math.max(280, Math.floor(wrap.getBoundingClientRect().width) || 600));
+  }
+
+  segmented('compareToggle', v => {
+    state.compare = v;
+    window.CGDTracking?.engagement('filter', 'recipient_group', v);
+    render();
+  });
+  segmented('measureToggle', v => {
+    state.measure = v;
+    window.CGDTracking?.engagement('view_control', 'measure', v);
+    render();
+  });
+  wireFullscreen();
+  render();
+  observeInlineSize(wrap, w => draw(Math.max(280, w)));
+  (document.fonts?.ready || Promise.resolve()).then(() => { render(); window.CGD_READY = true; });
+})();
+</script>
+<script src="shared/cgd-embed.js?v=20261125a"></script>
+</body>
+</html>

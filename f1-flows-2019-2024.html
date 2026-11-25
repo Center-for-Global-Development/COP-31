@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en" data-cgd-interactive-name="adaptation-gap-2026-f1-flows">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Adaptation finance flows, 2019–2024</title>
+<link rel="stylesheet" href="shared/cgd-figure.css?v=20261125a">
+<link rel="stylesheet" href="shared/cgd-responsive.css?v=20261125a">
+<link rel="stylesheet" href="shared/agr.css?v=20261125a">
+</head>
+<body>
+<div id="vizRoot" class="viz-wrapper">
+  <div class="header-row">
+    <div class="title-block"><h1 id="vizTitle">Adaptation finance to developing countries has fallen since its 2022 peak</h1></div>
+    <button class="fullscreen-btn" id="fullscreenBtn" type="button" aria-label="View fullscreen" data-tip="View fullscreen">
+      <svg class="icon-expand" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M21 16v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <svg class="icon-compress" width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3v5H3M16 3v5h5M8 21v-5H3M16 21v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+
+  <div class="controls" aria-label="Chart controls">
+    <div class="control-group">
+      <div class="control-label" id="groupLabel">Recipients</div>
+      <div class="segmented" id="groupToggle" role="group" aria-labelledby="groupLabel">
+        <button type="button" data-value="all" aria-pressed="true" data-tip="All developing countries">All developing</button>
+        <button type="button" data-value="ldc" aria-pressed="false" data-tip="Least developed countries">LDCs</button>
+        <button type="button" data-value="sids" aria-pressed="false" data-tip="Small island developing States">SIDS</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title">US$ billion per year</h2>
+      <div class="legend" id="legend" aria-label="Legend"></div>
+    </div>
+    <div class="chart-area"><div class="chart-wrap" id="chartWrap"></div></div>
+  </section>
+
+  <div class="notes" id="notes"></div>
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+</div>
+
+<script src="shared/dom.js?v=20261125a"></script>
+<script src="shared/chart-core.js?v=20261125a"></script>
+<script src="shared/agr.js?v=20261125a"></script>
+<script>
+(() => {
+  const { svgEl } = window.CGDDom;
+  const { observeInlineSize, createSvg, getLayout } = window.CGDCore;
+  const { usd, renderNotes, segmented, legend, attachTip, hideTip, wireFullscreen, niceTicks } = window.AGR;
+
+  /* UNEP AGR 2026: figure 2.3a (all developing countries, constant 2024 US$)
+     and figure 2.4 (LDCs, SIDS). Totals are the report's printed totals;
+     they can differ from the sum of the parts by 0.1 through rounding.
+     Targets: Glasgow doubling of 2019 flows in nominal terms (section 2.3.2). */
+  const YEARS = [2019, 2020, 2021, 2022, 2023, 2024];
+  const GROUPS = {
+    all: {
+      name: 'developing countries', short: 'All developing countries',
+      public:  [23.3, 27.9, 26.0, 31.5, 30.4, 28.2],
+      private: [1.8, 4.1, 1.5, 4.6, 4.4, 3.2],
+      total:   [25.0, 32.0, 27.4, 36.0, 34.8, 31.4],
+      target: 40, targetText: 'about US$40bn',
+      targetRows: [['Glasgow Climate Pact', 'Double 2019 flows by 2025'], ['2019 baseline', 'about US$20bn'], ['Target', 'about US$40bn']]
+    },
+    ldc: {
+      name: 'LDCs', short: 'Least developed countries',
+      public: [7.5, 9.5, 8.5, 12.1, 10.5, 10.2], private: null,
+      target: 13.0, targetText: 'US$13bn',
+      targetRows: [['2019 baseline', 'US$6.5bn'], ['Doubled by 2025', 'US$13bn']]
+    },
+    sids: {
+      name: 'SIDS', short: 'Small island developing States',
+      public: [1.0, 1.2, 1.3, 1.7, 1.2, 1.4], private: null,
+      target: 1.7, targetText: 'US$1.7bn',
+      targetRows: [['2019 baseline', 'US$0.8bn'], ['Doubled by 2025', 'US$1.7bn']]
+    }
+  };
+  // Data contract: every series has one value per year.
+  for (const [k, g] of Object.entries(GROUPS)) {
+    for (const s of ['public', 'private', 'total']) {
+      if (g[s] && g[s].length !== YEARS.length) throw new Error(`${k}.${s} has the wrong length`);
+    }
+  }
+
+  const SERIES = [
+    { key: 'public', label: 'Public finance', colour: '#006970', text: '#fff', tip: 'International public adaptation finance from developed countries' },
+    { key: 'private', label: 'Mobilised private', colour: '#2D99B5', text: '#1A272A', tip: 'Private finance mobilised by public adaptation finance' }
+  ];
+
+  const state = { group: 'all', hidden: new Set() };
+  const wrap = document.getElementById('chartWrap');
+
+  function seriesFor(g) { return SERIES.filter(s => g[s.key]); }
+
+  function renderLegend() {
+    const g = GROUPS[state.group];
+    const items = seriesFor(g).map(s => ({ ...s, toggle: seriesFor(g).length > 1 }));
+    items.push({ key: 'target', label: 'Doubling target, 2025', colour: '#FEE8BF', swatchClass: 'swatch-target', toggle: false,
+                 tip: state.group === 'all' ? 'Glasgow Climate Pact: double 2019 adaptation finance by 2025' : 'No separate target exists for this group; this doubles its 2019 flows' });
+    legend(document.getElementById('legend'), items, state.hidden, (key, hide) => {
+      hide ? state.hidden.add(key) : state.hidden.delete(key);
+      window.CGDTracking?.engagement('view_control', 'series_toggle', `${key}_${hide ? 'hidden' : 'shown'}`);
+      render();
+    });
+  }
+
+  function renderText() {
+    const g = GROUPS[state.group];
+    document.getElementById('vizTitle').textContent = `Adaptation finance to ${g.name} has fallen since its 2022 peak`;
+    const visible = state.group === 'all'
+      ? ['Mobilised private finance is the total mobilised, not only the share attributable to developed countries.',
+         'Totals may differ from the sum of their parts because of rounding.']
+      : ['Mobilised private finance is not reported for this group.',
+         'There is no separate target for LDCs or SIDS: the target shown doubles the group’s 2019 flows.',
+         'Some LDCs are also SIDS, and regional allocations are excluded.'];
+    renderNotes(document.getElementById('notes'), {
+      visible,
+      notes: ['Flows are international public adaptation finance committed by developed countries, in constant 2024 US$.',
+              'Doubling targets are measured against 2019 flows in nominal terms, as the Glasgow Climate Pact sets them.']
+    });
+  }
+
+  function draw(width) {
+    const g = GROUPS[state.group];
+    const L = getLayout(width);
+    const compact = L.name === 'compact';
+    const height = compact ? 250 : 300;
+    const m = { top: 22, right: 6, bottom: compact ? 34 : 34, left: 30 };
+    const shown = seriesFor(g).filter(s => !state.hidden.has(s.key));
+    const stackTop = i => shown.reduce((s, ser) => s + g[ser.key][i], 0);
+    const max = Math.max(g.target, ...YEARS.map((_, i) => stackTop(i))) * 1.08;
+    const { top, ticks } = niceTicks(max, compact ? 4 : 5);
+
+    const s = createSvg(wrap, width, height,
+      `Bar chart of adaptation finance to ${g.short}, 2019 to 2024, against the 2025 doubling target`);
+    const plotW = width - m.left - m.right, plotH = height - m.top - m.bottom;
+    const y = v => m.top + plotH - (v / top) * plotH;
+    const slots = YEARS.length + 1;
+    const gapExtra = compact ? 6 : 14;            // set the target slot apart
+    const slotW = (plotW - gapExtra) / slots;
+    const barW = Math.min(46, slotW * 0.62);
+    const cx = i => m.left + slotW * i + slotW / 2 + (i === YEARS.length ? gapExtra : 0);
+
+    const axis = svgEl('g', { class: 'axis' });
+    ticks.forEach(t => {
+      axis.append(svgEl('line', { class: 'grid-line', x1: m.left, x2: width - m.right, y1: y(t), y2: y(t) }));
+      const lab = svgEl('text', { x: m.left - 6, y: y(t) + 3.5, 'text-anchor': 'end', class: 'small-text' });
+      lab.textContent = String(t); axis.append(lab);
+    });
+    axis.append(svgEl('line', { x1: m.left, x2: width - m.right, y1: y(0), y2: y(0), stroke: '#1A272A' }));
+    [...YEARS, 2025].forEach((yr, i) => {
+      const t = svgEl('text', { x: cx(i), y: y(0) + 15, 'text-anchor': 'middle', class: 'small-text' });
+      t.textContent = String(yr); axis.append(t);
+      if (i === YEARS.length) {
+        const t2 = svgEl('text', { x: cx(i), y: y(0) + 28, 'text-anchor': 'middle', class: 'small-text' });
+        t2.textContent = 'target'; axis.append(t2);
+      }
+    });
+    s.append(axis);
+
+    YEARS.forEach((yr, i) => {
+      const grp = svgEl('g', { class: 'hit', tabindex: '0', role: 'img',
+        'aria-label': `${yr}: ${usd(shown.length === seriesFor(g).length && g.total ? g.total[i] : stackTop(i))}` });
+      let acc = 0;
+      shown.forEach(ser => {
+        const v = g[ser.key][i];
+        const r = svgEl('rect', { class: 'seg-mark', x: cx(i) - barW / 2, y: y(acc + v), width: barW, height: Math.max(0.5, y(acc) - y(acc + v)) });
+        r.style.setProperty('--mark-fill', ser.colour);
+        grp.append(r);
+        acc += v;
+      });
+      const totalShown = shown.length === seriesFor(g).length && g.total ? g.total[i] : acc;
+      const lab = svgEl('text', { class: 'bar-total', x: cx(i), y: y(acc) - 5, 'text-anchor': 'middle' });
+      lab.textContent = totalShown.toFixed(1);
+      grp.append(lab);
+      // Full-height transparent hit area so short bars are easy to hover and tap.
+      grp.append(svgEl('rect', { x: cx(i) - slotW / 2, y: m.top, width: slotW, height: plotH, fill: 'transparent' }));
+      attachTip(grp, () => {
+        const rows = seriesFor(g).map(ser => [ser.label, usd(g[ser.key][i])]);
+        if (g.private) rows.push(['Total', usd(g.total[i])]);
+        return { title: `${g.short}, ${yr}`, rows };
+      });
+      s.append(grp);
+    });
+
+    // 2025 doubling target: a hollow bar, distinct from the flows.
+    const i = YEARS.length;
+    const tg = svgEl('g', { class: 'hit', tabindex: '0', role: 'img', 'aria-label': `2025 doubling target: ${g.targetText}` });
+    tg.append(svgEl('rect', { class: 'target-mark', x: cx(i) - barW / 2, y: y(g.target), width: barW, height: y(0) - y(g.target) }));
+    const tl = svgEl('text', { class: 'bar-total', x: cx(i), y: y(g.target) - 5, 'text-anchor': 'middle' });
+    tl.textContent = state.group === 'all' ? '~40' : g.target.toFixed(1); tg.append(tl);
+    tg.append(svgEl('rect', { x: cx(i) - slotW / 2, y: m.top, width: slotW + gapExtra / 2, height: plotH, fill: 'transparent' }));
+    attachTip(tg, () => ({ title: `${g.short}: 2025 doubling target`, rows: g.targetRows }));
+    s.append(tg);
+  }
+
+  function render() {
+    hideTip();
+    renderLegend();
+    renderText();
+    draw(Math.max(280, Math.floor(wrap.getBoundingClientRect().width) || 600));
+  }
+
+  segmented('groupToggle', v => {
+    state.group = v; state.hidden.clear();
+    window.CGDTracking?.engagement('filter', 'recipient_group', v);
+    render();
+  });
+  wireFullscreen();
+  render();
+  observeInlineSize(wrap, w => draw(Math.max(280, w)));
+  (document.fonts?.ready || Promise.resolve()).then(() => { render(); window.CGD_READY = true; });
+})();
+</script>
+<script src="shared/cgd-embed.js?v=20261125a"></script>
+</body>
+</html>
